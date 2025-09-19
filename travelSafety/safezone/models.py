@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -21,3 +22,22 @@ class EmergencyReport(models.Model):
 
     def __str__(self):
         return f"{self.user_name} @ {self.timestamp}"
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    role = models.CharField(max_length=20)
+  
+
+ROLE_CHOICES = (
+    ('tourist', 'Tourist'),
+    ('police', 'Police'),
+    ('admin', 'Admin'),
+)
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='tourist')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.role}"
