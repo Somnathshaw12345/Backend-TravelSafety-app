@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tourist Safety Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes beep {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        .beep {
+            animation: beep 1s infinite;
+        }
+        
+        .donut-chart {
+            transform: rotate(-90deg);
+        }
+        
+        .emergency-progress {
+            transition: width 0.1s ease;
+        }
+        
+        .person-circle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .person-circle:hover {
+            transform: scale(1.1);
+        }
+        
+        .header-gradient {
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+        }
+        
+        .map-gradient {
+            background: linear-gradient(135deg, #F59E0B 0%, #EF4444 100%);
+        }
+        
+        .stats-card {
+            transition: all 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Base Station Active Notification - Increased height */
+        .notification-card {
+            padding: 1.25rem 1.5rem; /* Increased padding for taller appearance */
+            min-height: 85px; /* Set a minimum height */
+            display: flex;
+            align-items: center;
+        }
+        
+        .notification-icon {
+            padding: 0.75rem; /* Slightly larger icon container */
+            margin-right: 1rem;
+        }
+        
+        .notification-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .notification-title {
+            font-size: 1.1rem; /* Slightly larger title */
+            margin-bottom: 0.25rem;
+        }
+        
+        .notification-text {
+            font-size: 0.95rem; /* Slightly larger text */
+            line-height: 1.4;
+        }
+        
+        /* Mobile responsive adjustments */
+        @media (max-width: 640px) {
+            .max-w-md {
+                max-width: 100%;
+            }
+            
+            .p-5 {
+                padding: 1rem;
+            }
+            
+            .space-y-5 > * + * {
+                margin-top: 1rem;
+            }
+            
+            .grid-cols-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .h-64 {
+                height: 200px;
+            }
+            
+            #status-indicator, #audio-indicator {
+                top: 10px;
+                right: 10px;
+                font-size: 0.7rem;
+                padding: 0.3rem 0.6rem;
+            }
+            
+            #audio-indicator {
+                width: 30px;
+                height: 30px;
+                top: 50px;
+            }
+            
+            .text-xl {
+                font-size: 1.2rem;
+            }
+            
+            .text-lg {
+                font-size: 1rem;
+            }
+            
+            .text-3xl {
+                font-size: 1.5rem;
+            }
+            
+            .stats-card {
+                padding: 0.75rem;
+            }
+            
+            /* Notification adjustments for mobile */
+            .notification-card {
+                padding: 1rem; /* Slightly reduced padding on mobile */
+                min-height: 75px;
+            }
+            
+            .notification-icon {
+                padding: 0.6rem;
+                margin-right: 0.8rem;
+            }
+            
+            .notification-title {
+                font-size: 1rem;
+            }
+            
+            .notification-text {
+                font-size: 0.85rem;
+            }
+            
+            /* Donut chart improvements for mobile */
+            .relative[style*="width: 70px; height: 70px;"] {
+                width: 80px !important;
+                height: 80px !important;
+            }
+            
+            svg#donut-chart {
+                width: 80px;
+                height: 80px;
+            }
+            
+            #points-value {
+                font-size: 1.2rem;
+                font-weight: bold;
+            }
+            
+            /* Improve contrast for the chart */
+            #progress-circle {
+                filter: drop-shadow(0px 0px 2px rgba(0, 0, 0, 0.3));
+            }
+            
+            /* Stats card adjustments to accommodate larger chart */
+            .stats-card {
+                padding: 1rem;
+            }
+            
+            /* Person circle adjustments for mobile */
+            #nearest-person-circle {
+                width: 40px !important;
+                height: 40px !important;
+                font-size: 0.8rem;
+            }
+            
+            #person-count {
+                font-size: 0.9rem !important;
+            }
+            
+            #nearest-person-circle .text-xs {
+                font-size: 0.6rem;
+                line-height: 1;
+            }
+        }
+        
+        /* Very small devices */
+        @media (max-width: 360px) {
+            #nearest-person-circle {
+                width: 35px !important;
+                height: 35px !important;
+            }
+            
+            #person-count {
+                font-size: 0.8rem !important;
+            }
+            
+            #nearest-person-circle .text-xs {
+                display: none;
+            }
+            
+            /* Notification adjustments for very small screens */
+            .notification-card {
+                padding: 0.8rem;
+                min-height: 70px;
+            }
+            
+            .notification-icon {
+                padding: 0.5rem;
+                margin-right: 0.7rem;
+            }
+            
+            .notification-title {
+                font-size: 0.95rem;
+            }
+            
+            .notification-text {
+                font-size: 0.8rem;
+            }
+            
+            /* Slightly smaller chart for very small screens */
+            .relative[style*="width: 70px; height: 70px;"] {
+                width: 70px !important;
+                height: 70px !important;
+            }
+            
+            svg#donut-chart {
+                width: 70px;
+                height: 70px;
+            }
+            
+            #points-value {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 p-2 sm:p-5">
+    <div class="max-w-md mx-auto">
+        <!-- Status Indicator -->
+        <div id="status-indicator" class="fixed top-5 right-5 px-4 py-2 rounded-full text-white text-xs font-bold z-50 shadow-lg">
+            <i class="fas fa-check-circle mr-1"></i> SAFE ZONE
+        </div>
+
+        <!-- Audio Indicator -->
+        <div id="audio-indicator" class="fixed top-16 right-5 w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white z-50 shadow-lg hidden">
+            <i class="fas fa-volume-up"></i>
+        </div>
+
+        <div class="space-y-5 bg-white rounded-2xl shadow-lg p-4">
+            <!-- Map Container -->
+            <div id="map-container" class="relative h-64 map-gradient rounded-2xl overflow-hidden cursor-pointer shadow-xl">
+                <div class="absolute inset-0 bg-black bg-opacity-10"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <h2 class="text-white text-xl font-bold text-center z-10 px-5">
+                        <i class="fas fa-map-marker-alt mr-2"></i> Interactive Safety Map
+                    </h2>
+                </div>
+                
+                <!-- User Position -->
+                <div id="user-position" class="absolute w-4 h-4 rounded-full border-2 border-white z-20 transform -translate-x-2 -translate-y-2 pulse"
+                    style="left: 50%; top: 50%; background-color: #10B981;">
+                </div>
+                
+                <!-- Restricted Zones -->
+                <div class="absolute bg-red-400 bg-opacity-30 border-2 border-dashed border-red-500 rounded-lg"
+                    style="left: 70%; top: 20%; width: 25%; height: 20%;">
+                    <div class="absolute bottom-0 left-0 right-0 bg-red-500 bg-opacity-70 text-white text-xs text-center py-1">
+                        Restricted
+                    </div>
+                </div>
+                <div class="absolute bg-red-400 bg-opacity-30 border-2 border-dashed border-red-500 rounded-lg"
+                    style="left: 10%; top: 70%; width: 30%; height: 25%;">
+                    <div class="absolute bottom-0 left-0 right-0 bg-red-500 bg-opacity-70 text-white text-xs text-center py-1">
+                        Restricted
+                    </div>
+                </div>
+                
+                <!-- Nearest Person Circle -->
+                <div id="nearest-person-circle" class="absolute person-circle z-20 transform -translate-x-1/2 -translate-y-1/2 shadow-lg"
+                    style="width: 50px; height: 50px; background-color: #3B82F6; left: 30%; top: 30%;">
+                    <div class="text-center">
+                        <div id="person-count" class="text-lg font-bold">6</div>
+                        <div class="text-xs">People</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="space-y-5">
+                <!-- Stats Row - Single column now -->
+                <div class="grid grid-cols-1 gap-4">
+                    <!-- Safety Score Section -->
+                    <div class="stats-card bg-gradient-to-br from-green-50 to-blue-50 p-4 rounded-2xl border border-green-100">
+                        <div class="flex items-center">
+                            <div class="relative" style="width: 70px; height: 70px;">
+                                <svg id="donut-chart" width="70" height="70" class="donut-chart">
+                                    <!-- Background circle -->
+                                    <circle cx="35" cy="35" r="32" stroke="#E0E0E0" stroke-width="6" fill="transparent"></circle>
+                                    <!-- Progress circle -->
+                                    <circle id="progress-circle" cx="35" cy="35" r="32" stroke="#10B981" stroke-width="6" 
+                                        stroke-dasharray="201.06192982974676" stroke-dashoffset="30.15928947446201" 
+                                        stroke-linecap="round" fill="transparent" class="transition-all duration-500"></circle>
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span id="points-value" class="text-lg font-bold" style="color: #10B981;">85</span>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <div class="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold inline-block mb-1">
+                                    <i class="fas fa-shield-alt mr-1"></i> Safety Score
+                                </div>
+                                <div class="text-xs text-gray-600 mt-1">Points: <span id="points-text">85</span>/100</div>
+                                <div class="text-xs text-gray-600">Status: <span id="status-text">Safe Zone</span></div>
+                                <div class="text-xs text-gray-600 mt-2">
+                                    <i class="fas fa-users text-blue-500 mr-1"></i> 
+                                    <span id="total-persons">6</span> people detected nearby
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification - Height increased -->
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl shadow-lg notification-card">
+                    <div class="flex items-center">
+                        <div class="bg-white bg-opacity-20 rounded-full notification-icon">
+                            <i class="fas fa-broadcast-tower"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title font-bold">Base Station Active</div>
+                            <div id="notification-text" class="notification-text opacity-90">
+                                All systems operational. Stay within safe zones for optimal experience.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emergency Button -->
+                <button id="emergency-btn" class="w-full h-16 rounded-2xl text-white font-bold text-lg uppercase tracking-wider relative overflow-hidden transition-all bg-gradient-to-r from-red-500 to-red-600 shadow-lg hover:from-red-600 hover:to-red-700">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span id="btn-text">Hold for Emergency Signal</span>
+                    <div id="emergency-progress" class="emergency-progress absolute bottom-0 left-0 h-1 bg-white bg-opacity-80" style="width: 0%"></div>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-xs mt-5">
+            <p>Tourist Safety Tracker v1.2 • <i class="fas fa-shield-alt mr-1"></i> Your security is our priority</p>
+        </div>
+    </div>
+
+    <script>
+        // App state
+        const state = {
+            userPosition: { x: 50, y: 50 },
+            userPoints: 85,
+            maxPoints: 100,
+            isInRestrictedZone: false,
+            currentStatus: 'Safe Zone',
+            emergencyProgress: 0,
+            isEmergencyActive: false,
+            nearbyPersons: [],
+            isBeeping: false,
+            emergencyTimer: null,
+            beepTimer: null,
+            audioContext: null,
+            restrictedZones: [
+                { x: 70, y: 20, width: 25, height: 20 },
+                { x: 10, y: 70, width: 30, height: 25 }
+            ],
+            totalPersons: 6
+        };
+
+        // Initialize the app
+        function initApp() {
+            // Set up audio context
+            try {
+                state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+
+            // Set up event listeners
+            document.getElementById('map-container').addEventListener('click', handleMapClick);
+            
+            const emergencyBtn = document.getElementById('emergency-btn');
+            emergencyBtn.addEventListener('mousedown', startEmergencyHold);
+            emergencyBtn.addEventListener('mouseup', stopEmergencyHold);
+            emergencyBtn.addEventListener('mouseleave', stopEmergencyHold);
+            emergencyBtn.addEventListener('touchstart', startEmergencyHold);
+            emergencyBtn.addEventListener('touchend', stopEmergencyHold);
+
+            // Generate initial data
+            generateNearbyPersons();
+            updateTime();
+            
+            // Set up intervals
+            setInterval(updateTime, 1000);
+            setInterval(updateTracking, 5000);
+            setInterval(updatePersonCount, 8000);
+            
+            // Initial render
+            updateDonutChart();
+            updateStatusIndicator();
+        }
+
+        // Update time display
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
+            });
+            // Time is no longer displayed in header since header was removed
+        }
+
+        // Generate nearby persons data
+        function generateNearbyPersons() {
+            const persons = [
+                { id: 1, name: 'Alex Chen', distance: 245, status: 'Safe', color: '#3F51B5' },
+                { id: 2, name: 'Maria Silva', distance: 567, status: 'Safe', color: '#E91E63' },
+                { id: 3, name: 'John Smith', distance: 123, status: 'Warning', color: '#FF5722' },
+                { id: 4, name: 'Emma Wilson', distance: 789, status: 'Safe', color: '#9C27B0' },
+                { id: 5, name: 'David Kim', distance: 434, status: 'Safe', color: '#00BCD4' },
+                { id: 6, name: 'Sophie Brown', distance: 656, status: 'Warning', color: '#FF9800' },
+            ];
+            
+            const updatedPersons = persons.map(person => ({
+                ...person,
+                distance: Math.floor(Math.random() * 950) + 50,
+                status: Math.random() > 0.8 ? 'Warning' : 'Safe'
+            })).sort((a, b) => a.distance - b.distance);
+            
+            state.nearbyPersons = updatedPersons;
+            updatePersonCount();
+        }
+
+        // Update person count
+        function updatePersonCount() {
+            // Randomly change the number of persons to simulate real-time updates
+            const change = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+            state.totalPersons = Math.max(3, Math.min(12, state.totalPersons + change));
+            
+            document.getElementById('total-persons').textContent = state.totalPersons;
+            document.getElementById('person-count').textContent = state.totalPersons;
+        }
+
+        // Update donut chart with proper sizing
+        function updateDonutChart() {
+            const percentage = (state.userPoints / state.maxPoints) * 100;
+            
+            // Get the actual size of the chart container
+            const chartContainer = document.querySelector('.relative[style*="width: 70px; height: 70px;"]');
+            const size = Math.min(chartContainer.offsetWidth, chartContainer.offsetHeight);
+            const radius = size / 2 - 6; // Account for stroke width
+            const circumference = 2 * Math.PI * radius;
+            const strokeDashoffset = circumference - (percentage / 100) * circumference;
+            
+            let color;
+            if (state.userPoints > 70) color = '#10B981';
+            else if (state.userPoints > 40) color = '#F59E0B';
+            else color = '#EF4444';
+            
+            const progressCircle = document.getElementById('progress-circle');
+            const donutChart = document.getElementById('donut-chart');
+            
+            // Update SVG dimensions
+            donutChart.setAttribute('width', size);
+            donutChart.setAttribute('height', size);
+            
+            // Update circles
+            const circles = donutChart.querySelectorAll('circle');
+            circles.forEach(circle => {
+                circle.setAttribute('cx', size / 2);
+                circle.setAttribute('cy', size / 2);
+                circle.setAttribute('r', radius);
+            });
+            
+            progressCircle.setAttribute('stroke', color);
+            progressCircle.setAttribute('stroke-dasharray', circumference);
+            progressCircle.setAttribute('stroke-dashoffset', strokeDashoffset);
+            
+            document.getElementById('points-value').textContent = state.userPoints;
+            document.getElementById('points-value').style.color = color;
+            document.getElementById('points-text').textContent = state.userPoints;
+        }
+
+        // Play beep sound
+        function playBeep(frequency = 800) {
+            if (!state.audioContext) return;
+            
+            const oscillator = state.audioContext.createOscillator();
+            const gainNode = state.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(state.audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequency, state.audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, state.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, state.audioContext.currentTime + 0.2);
+            
+            oscillator.start(state.audioContext.currentTime);
+            oscillator.stop(state.audioContext.currentTime + 0.2);
+        }
+
+        // Start beeping
+        function startBeeping(interval = 1000) {
+            stopBeeping();
+            state.isBeeping = true;
+            document.getElementById('audio-indicator').classList.remove('hidden');
+            
+            state.beepTimer = setInterval(() => {
+                playBeep(state.isInRestrictedZone ? 1000 : 600);
+            }, interval);
+            
+            playBeep();
+        }
+
+        // Stop beeping
+        function stopBeeping() {
+            if (state.beepTimer) {
+                clearInterval(state.beepTimer);
+                state.beepTimer = null;
+            }
+            state.isBeeping = false;
+            document.getElementById('audio-indicator').classList.add('hidden');
+        }
+
+        // Check restricted zones
+        function checkRestrictedZones(x, y) {
+            let inZone = false;
+            let minDistance = Infinity;
+
+            for (const zone of state.restrictedZones) {
+                if (x >= zone.x && x <= zone.x + zone.width &&
+                    y >= zone.y && y <= zone.y + zone.height) {
+                    inZone = true;
+                    break;
+                }
+                
+                const centerX = zone.x + zone.width / 2;
+                const centerY = zone.y + zone.height / 2;
+                const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                minDistance = Math.min(minDistance, distance);
+            }
+
+            const wasInZone = state.isInRestrictedZone;
+            state.isInRestrictedZone = inZone;
+
+            if (inZone) {
+                state.currentStatus = 'Restricted Zone';
+                if (!wasInZone) {
+                    startBeeping(300);
+                    state.userPoints = Math.max(0, state.userPoints - 5);
+                    updateDonutChart();
+                }
+            } else if (minDistance < 20) {
+                state.currentStatus = 'Near Restricted';
+                if (!state.beepTimer) {
+                    startBeeping(1000);
+                }
+            } else {
+                state.currentStatus = 'Safe Zone';
+                if (wasInZone || state.beepTimer) {
+                    stopBeeping();
+                    if (wasInZone) {
+                        state.userPoints = Math.min(100, state.userPoints + 2);
+                        updateDonutChart();
+                    }
+                }
+            }
+            
+            document.getElementById('status-text').textContent = state.currentStatus;
+            updateStatusIndicator();
+        }
+
+        // Handle map click
+        function handleMapClick(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            
+            state.userPosition = { x, y };
+            document.getElementById('user-position').style.left = `${x}%`;
+            document.getElementById('user-position').style.top = `${y}%`;
+            
+            checkRestrictedZones(x, y);
+        }
+
+        // Update status indicator
+        function updateStatusIndicator() {
+            const indicator = document.getElementById('status-indicator');
+            let color, icon, text;
+            
+            if (state.isInRestrictedZone) {
+                color = '#EF4444';
+                icon = '<i class="fas fa-ban mr-1"></i>';
+                text = 'RESTRICTED ZONE';
+            } else if (state.currentStatus === 'Near Restricted') {
+                color = '#F59E0B';
+                icon = '<i class="fas fa-exclamation-triangle mr-1"></i>';
+                text = 'WARNING ZONE';
+            } else {
+                color = '#10B981';
+                icon = '<i class="fas fa-check-circle mr-1"></i>';
+                text = 'SAFE ZONE';
+            }
+            
+            indicator.style.backgroundColor = color;
+            indicator.innerHTML = `${icon} ${text}`;
+            
+            // Update user position dot color
+            document.getElementById('user-position').style.backgroundColor = color;
+        }
+
+        // Start emergency hold
+        function startEmergencyHold() {
+            if (state.isEmergencyActive) return;
+            
+            state.emergencyProgress = 0;
+            document.getElementById('emergency-btn').classList.add('from-red-600', 'to-red-700');
+            
+            state.emergencyTimer = setInterval(() => {
+                state.emergencyProgress += 2;
+                document.getElementById('emergency-progress').style.width = `${state.emergencyProgress}%`;
+                
+                if (state.emergencyProgress >= 100) {
+                    sendEmergencySignal();
+                }
+            }, 50);
+        }
+
+        // Stop emergency hold
+        function stopEmergencyHold() {
+            if (state.emergencyTimer) {
+                clearInterval(state.emergencyTimer);
+                state.emergencyTimer = null;
+            }
+            
+            if (!state.isEmergencyActive) {
+                state.emergencyProgress = 0;
+                document.getElementById('emergency-progress').style.width = '0%';
+                document.getElementById('emergency-btn').classList.remove('from-red-600', 'to-red-700');
+            }
+        }
+
+        // Send emergency signal
+        function sendEmergencySignal() {
+            state.isEmergencyActive = true;
+            clearInterval(state.emergencyTimer);
+            
+            document.getElementById('emergency-btn').classList.remove('from-red-500', 'to-red-600');
+            document.getElementById('emergency-btn').classList.add('from-green-500', 'to-green-600');
+            document.getElementById('btn-text').innerHTML = '<i class="fas fa-check mr-1"></i> Emergency Signal Sent';
+            document.getElementById('notification-text').textContent = '🚨 EMERGENCY SIGNAL TRANSMITTED - Help is on the way!';
+            
+            // Play emergency sound sequence
+            playBeep(1200);
+            setTimeout(() => playBeep(1000), 300);
+            setTimeout(() => playBeep(800), 600);
+            
+            setTimeout(() => {
+                state.isEmergencyActive = false;
+                state.emergencyProgress = 0;
+                document.getElementById('emergency-progress').style.width = '0%';
+                document.getElementById('emergency-btn').classList.remove('from-green-500', 'to-green-600');
+                document.getElementById('emergency-btn').classList.add('from-red-500', 'to-red-600');
+                document.getElementById('btn-text').innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Hold for Emergency Signal';
+                document.getElementById('notification-text').textContent = 'All systems operational. Stay within safe zones for optimal experience.';
+            }, 10000);
+        }
+
+        // Update tracking
+        function updateTracking() {
+            if (!state.isInRestrictedZone && Math.random() < 0.1) {
+                state.userPoints = Math.min(100, state.userPoints + 1);
+                updateDonutChart();
+            }
+        }
+
+        // Initialize the app when the page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            
+            // Handle window resize for proper chart rendering
+            window.addEventListener('resize', () => {
+                updateDonutChart();
+            });
+        });
+    </script>
+</body>
+</html>
