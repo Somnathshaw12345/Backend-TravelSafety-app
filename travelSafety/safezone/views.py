@@ -97,4 +97,14 @@ def resolve_emergency(request, report_id):
         return JsonResponse({"message": "Emergency resolved"})
     except EmergencyReport.DoesNotExist:
         return JsonResponse({"error": "Report not found"}, status=404)
-    
+
+@login_required(login_url='login')
+def dashboard_view(request):
+    role = request.user.profile.role
+
+    if role == "admin":
+        return render(request, 'safezone/dashboard_admin.html')
+    elif role == "police":
+        return render(request, 'safezone/dashboard_police.html')
+    else:
+        return render(request, 'safezone/dashboard_user.html')

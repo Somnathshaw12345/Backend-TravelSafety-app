@@ -25,9 +25,15 @@ class EmergencyReport(models.Model):
 
 
 class Profile(models.Model):
+    ROLE_CHOICES = (
+        ("user", "User"),
+        ("admin", "Admin"),
+        ("police", "Police"),
+    )
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    role = models.CharField(max_length=20)
-  
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="user")
+    def __str__(self):
+        return f"{self.user.username} - {self.role}"
 
 ROLE_CHOICES = (
     ('tourist', 'Tourist'),
