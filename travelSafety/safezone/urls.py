@@ -11,4 +11,4 @@ urlpatterns = [
     path("emergency/", views.send_emergency, name="send_emergency"),
     path("police/dashboard/", views.police_dashboard, name="police_dashboard"),
 
-]
+] 

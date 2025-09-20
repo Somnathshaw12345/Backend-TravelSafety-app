@@ -5,10 +5,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Tourist Safety Tracker{% endblock %}</title>
+    <title>Tourist Safety Tracker</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <style>
         @keyframes pulse {
             0% { transform: scale(1); }
@@ -37,21 +38,6 @@
             transition: width 0.1s ease;
         }
         
-        .person-circle {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            color: white;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .person-circle:hover {
-            transform: scale(1.1);
-        }
         
         .header-gradient {
             background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
@@ -97,6 +83,48 @@
         .notification-text {
             font-size: 0.95rem; /* Slightly larger text */
             line-height: 1.4;
+        }
+        
+        /* Map container styling */
+        #map {
+            height: 100%;
+            width: 100%;
+            border-radius: 1rem;
+            z-index: 1;
+        }
+        
+        /* Custom marker styling */
+        .custom-marker {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: #10B981;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            animation: pulse 2s infinite;
+        }
+        
+        .restricted-marker {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: rgba(239, 68, 68, 0.3);
+            border: 2px dashed #EF4444;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .person-marker {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #3B82F6;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 2px solid white;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
         }
         
         /* Mobile responsive adjustments */
@@ -195,38 +223,10 @@
                 padding: 1rem;
             }
             
-            /* Person circle adjustments for mobile */
-            #nearest-person-circle {
-                width: 40px !important;
-                height: 40px !important;
-                font-size: 0.8rem;
-            }
-            
-            #person-count {
-                font-size: 0.9rem !important;
-            }
-            
-            #nearest-person-circle .text-xs {
-                font-size: 0.6rem;
-                line-height: 1;
-            }
         }
         
         /* Very small devices */
         @media (max-width: 360px) {
-            #nearest-person-circle {
-                width: 35px !important;
-                height: 35px !important;
-            }
-            
-            #person-count {
-                font-size: 0.8rem !important;
-            }
-            
-            #nearest-person-circle .text-xs {
-                display: none;
-            }
-            
             /* Notification adjustments for very small screens */
             .notification-card {
                 padding: 0.8rem;
@@ -261,6 +261,148 @@
                 font-size: 1rem;
             }
         }
+        
+        /* Developer pin styling */
+        .dev-pin {
+            cursor: move !important;
+        }
+        
+        .dev-pin:hover {
+            transform: scale(1.2);
+            transition: transform 0.2s ease;
+        }
+        
+        /* Location button styling */
+        #locate-me-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 1000;
+            background-color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        #locate-me-btn:hover {
+            background-color: #f0f0f0;
+            transform: scale(1.1);
+        }
+        
+        #locate-me-btn.locating {
+            background-color: #3B82F6;
+            color: white;
+        }
+        
+        /* Loading indicator for location */
+        .location-loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Hide test buttons and dev tools on mobile devices */
+        @media (max-width: 640px) {
+            #test-beep-btn,
+            #test-yellow-btn,
+            #test-score-btn,
+            #test-basecamp-btn,
+            #test-roads-btn,
+            #test-location-btn,
+            #dev-mode-toggle {
+                display: none !important;
+            }
+        }
+        
+        /* Coordinates display animation */
+        #coordinates-display {
+            transition: all 0.2s ease;
+        }
+        
+        #coordinates-display.updating {
+            background-color: rgba(59, 130, 246, 0.8);
+        }
+        
+        /* Base camp mode styles - Mobile optimized */
+        .base-camp-mode {
+            background: #f3f4f6;
+        }
+        
+        .base-camp-mode #map-container {
+            height: 70vh !important; /* Bigger map but not full screen */
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .base-camp-mode #map {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        .base-camp-mode .base-camp-warning {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(220, 38, 38, 0.95);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 1000;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+        }
+        
+        .base-camp-mode .base-camp-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            z-index: 1000;
+            font-size: 12px;
+        }
+        
+        .base-camp-mode .base-camp-controls {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            z-index: 1000;
+        }
+        
+        .base-camp-mode .base-camp-controls button {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 12px;
+            margin: 2px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #374151;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gray-50 p-2 sm:p-5">
@@ -275,43 +417,81 @@
             <i class="fas fa-volume-up"></i>
         </div>
 
+        <!-- Developer Mode Toggle -->
+        <div id="dev-mode-toggle" class="fixed top-28 right-5 px-3 py-2 bg-gray-800 text-white text-xs font-bold z-50 shadow-lg rounded-full cursor-pointer hover:bg-gray-700 transition-colors">
+            <i class="fas fa-code mr-1"></i> DEV MODE
+        </div>
+
+        <!-- Test Beep Button -->
+        <div id="test-beep-btn" class="fixed top-40 right-5 px-3 py-2 bg-blue-600 text-white text-xs font-bold z-50 shadow-lg rounded-full cursor-pointer hover:bg-blue-700 transition-colors">
+            <i class="fas fa-volume-up mr-1"></i> TEST BEEP
+        </div>
+
+        <!-- Test Yellow Beep Button -->
+        <div id="test-yellow-btn" class="fixed top-52 right-5 px-3 py-2 bg-yellow-600 text-white text-xs font-bold z-50 shadow-lg rounded-full cursor-pointer hover:bg-yellow-700 transition-colors">
+            <i class="fas fa-exclamation-triangle mr-1"></i> TEST YELLOW
+        </div>
+
+        <!-- Test Safety Score Button -->
+        <div id="test-score-btn" class="fixed top-64 right-5 px-3 py-2 bg-red-600 text-white text-xs font-bold z-50 shadow-lg rounded-full cursor-pointer hover:bg-red-700 transition-colors">
+            <i class="fas fa-exclamation-circle mr-1"></i> TEST SCORE
+        </div>
+
+        <!-- Test Base Camp Mode Button -->
+        <div id="test-basecamp-btn" class="fixed top-80 right-5 px-3 py-2 bg-purple-600 text-white text-xs font-bold z-50 shadow-lg rounded-full cursor-pointer hover:bg-purple-700 transition-colors">
+            <i class="fas fa-campground mr-1"></i> TEST BASE CAMP
+        </div>
+
+        <!-- Test Road Network Button -->
+        <div id="test-roads-btn" class="fixed top-96 right-5 px-3 py-2 bg-indigo-600 text-white text-xs font-bold z-50 shadow-lg rounded-full cursor-pointer hover:bg-indigo-700 transition-colors">
+            <i class="fas fa-road mr-1"></i> TEST ROADS
+        </div>
+
+        <!-- Test Location Button -->
+        <div id="test-location-btn" class="fixed top-112 right-5 px-3 py-2 bg-green-600 text-white text-xs font-bold z-50 shadow-lg rounded-full cursor-pointer hover:bg-green-700 transition-colors">
+            <i class="fas fa-map-marker-alt mr-1"></i> TEST LOCATION
+        </div>
+
         <div class="space-y-5 bg-white rounded-2xl shadow-lg p-4">
             <!-- Map Container -->
-            <div id="map-container" class="relative h-64 map-gradient rounded-2xl overflow-hidden cursor-pointer shadow-xl">
-                <div class="absolute inset-0 bg-black bg-opacity-10"></div>
-                <div class="absolute inset-0 flex items-center justify-center">
-                    <h2 class="text-white text-xl font-bold text-center z-10 px-5">
-                        <i class="fas fa-map-marker-alt mr-2"></i> Interactive Safety Map
-                    </h2>
-                </div>
+            <div id="map-container" class="relative h-64 rounded-2xl overflow-hidden shadow-xl">
+                <div id="map"></div>
                 
-                <!-- User Position -->
-                <div id="user-position" class="absolute w-4 h-4 rounded-full border-2 border-white z-20 transform -translate-x-2 -translate-y-2 pulse"
-                    style="left: 50%; top: 50%; background-color: #10B981;">
-                </div>
+                <!-- Locate Me Button -->
+                <button id="locate-me-btn" title="Show my location">
+                    <i class="fas fa-location-arrow"></i>
+                </button>
                 
-                <!-- Restricted Zones -->
-                <div class="absolute bg-red-400 bg-opacity-30 border-2 border-dashed border-red-500 rounded-lg"
-                    style="left: 70%; top: 20%; width: 25%; height: 20%;">
-                    <div class="absolute bottom-0 left-0 right-0 bg-red-500 bg-opacity-70 text-white text-xs text-center py-1">
-                        Restricted
+                <!-- Zone Info -->
+                <div id="zone-info" class="absolute top-2 right-2 bg-white bg-opacity-90 p-2 rounded-lg shadow-lg z-20">
+                    <h3 class="text-xs font-semibold text-gray-800 mb-1">Zones</h3>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex items-center">
+                            <div class="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
+                            <span class="text-gray-700 text-xs">Red</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
+                            <span class="text-gray-700 text-xs">Yellow</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                            <span class="text-gray-700 text-xs">Green</span>
+                        </div>
                     </div>
                 </div>
-                <div class="absolute bg-red-400 bg-opacity-30 border-2 border-dashed border-red-500 rounded-lg"
-                    style="left: 10%; top: 70%; width: 30%; height: 25%;">
-                    <div class="absolute bottom-0 left-0 right-0 bg-red-500 bg-opacity-70 text-white text-xs text-center py-1">
-                        Restricted
+                
+                <!-- Coordinates Display -->
+                <div id="coordinates-display" class="absolute bottom-2 left-2 px-1.5 py-1 bg-black bg-opacity-75 text-white text-xs font-mono z-20 shadow-lg rounded">
+                    <div class="flex items-center">
+                        <i class="fas fa-map-marker-alt mr-1 text-blue-400 text-xs"></i>
+                        <div class="text-xs">
+                            <div>Lat: <span id="current-lat">22.988500</span></div>
+                            <div>Lng: <span id="current-lng">88.453000</span></div>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Nearest Person Circle -->
-                <div id="nearest-person-circle" class="absolute person-circle z-20 transform -translate-x-1/2 -translate-y-1/2 shadow-lg"
-                    style="width: 50px; height: 50px; background-color: #3B82F6; left: 30%; top: 30%;">
-                    <div class="text-center">
-                        <div id="person-count" class="text-lg font-bold">6</div>
-                        <div class="text-xs">People</div>
-                    </div>
-                </div>
             </div>
 
             <!-- Info Panel -->
@@ -379,14 +559,18 @@
         </div>
     </div>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
     <script>
         // App state
         const state = {
-            userPosition: { x: 50, y: 50 },
-            userPoints: 85,
+            userPosition: { lat: 22.9885, lng: 88.4530 }, // Default near your zones
+            userPoints: 100,
             maxPoints: 100,
             isInRestrictedZone: false,
             currentStatus: 'Safe Zone',
+            currentZone: null,
             emergencyProgress: 0,
             isEmergencyActive: false,
             nearbyPersons: [],
@@ -394,12 +578,46 @@
             emergencyTimer: null,
             beepTimer: null,
             audioContext: null,
-            restrictedZones: [
-                { x: 70, y: 20, width: 25, height: 20 },
-                { x: 10, y: 70, width: 30, height: 25 }
-            ],
-            totalPersons: 6
+            restrictedZones: [],
+            totalPersons: 6,
+            map: null,
+            userMarker: null,
+            restrictedLayer: null,
+            personMarkers: [],
+            devMode: false,
+            devPin: null,
+            locationWatchId: null,
+            baseCampCoords: { lat: 22.990663, lng: 88.450971 },
+            baseCampMode: false,
+            baseCampMarker: null,
+            routePolyline: null
         };
+
+        // Polygon coordinates from location_checker.py (converted to [lat, lng] format)
+        // Priority: RED > GREEN > YELLOW (matching Python script)
+        const redZoneCoords = [
+            [22.98805, 88.45294],
+            [22.98799, 88.45321],
+            [22.98892, 88.45361],
+            [22.98902, 88.45332],
+            [22.98805, 88.45294]  // Close the polygon
+        ];
+
+        const greenZoneCoords = [
+            [22.98816, 88.45272],
+            [22.9881, 88.45285],
+            [22.98905, 88.45323],
+            [22.9891, 88.45309],
+            [22.98816, 88.45272]  // Close the polygon
+        ];
+
+        const yellowZoneCoords = [
+            [22.9881, 88.45285],
+            [22.98808, 88.45295],
+            [22.98902, 88.45332],
+            [22.98905, 88.45323],
+            [22.9881, 88.45285]  // Close the polygon
+        ];
 
         // Initialize the app
         function initApp() {
@@ -410,15 +628,52 @@
                 console.log('Audio not supported');
             }
 
-            // Set up event listeners
-            document.getElementById('map-container').addEventListener('click', handleMapClick);
+            // Initialize map
+            initMap();
             
+            // Set up event listeners
             const emergencyBtn = document.getElementById('emergency-btn');
             emergencyBtn.addEventListener('mousedown', startEmergencyHold);
             emergencyBtn.addEventListener('mouseup', stopEmergencyHold);
             emergencyBtn.addEventListener('mouseleave', stopEmergencyHold);
             emergencyBtn.addEventListener('touchstart', startEmergencyHold);
             emergencyBtn.addEventListener('touchend', stopEmergencyHold);
+
+            // Set up developer mode toggle
+            const devModeToggle = document.getElementById('dev-mode-toggle');
+            devModeToggle.addEventListener('click', toggleDevMode);
+
+            // Enable audio on first user interaction
+            document.addEventListener('click', enableAudio, { once: true });
+            document.addEventListener('touchstart', enableAudio, { once: true });
+
+            // Set up test beep button
+            const testBeepBtn = document.getElementById('test-beep-btn');
+            testBeepBtn.addEventListener('click', testBeep);
+
+            // Set up test yellow beep button
+            const testYellowBtn = document.getElementById('test-yellow-btn');
+            testYellowBtn.addEventListener('click', testYellowBeeping);
+
+            // Set up test score button
+            const testScoreBtn = document.getElementById('test-score-btn');
+            testScoreBtn.addEventListener('click', testSafetyScore);
+            
+            // Set up test base camp button
+            const testBaseCampBtn = document.getElementById('test-basecamp-btn');
+            testBaseCampBtn.addEventListener('click', testBaseCampMode);
+            
+            // Set up test roads button
+            const testRoadsBtn = document.getElementById('test-roads-btn');
+            testRoadsBtn.addEventListener('click', testRoadNetwork);
+            
+            // Set up test location button
+            const testLocationBtn = document.getElementById('test-location-btn');
+            testLocationBtn.addEventListener('click', testLocation);
+
+            // Set up locate me button
+            const locateMeBtn = document.getElementById('locate-me-btn');
+            locateMeBtn.addEventListener('click', locateUser);
 
             // Generate initial data
             generateNearbyPersons();
@@ -427,11 +682,125 @@
             // Set up intervals
             setInterval(updateTime, 1000);
             setInterval(updateTracking, 5000);
-            setInterval(updatePersonCount, 8000);
             
             // Initial render
             updateDonutChart();
             updateStatusIndicator();
+            updateCoordinates(state.userPosition.lat, state.userPosition.lng);
+            
+            // Start real-time coordinate updates
+            startCoordinateUpdates();
+            
+            // Start location tracking
+            startLocationTracking();
+        }
+
+        // Initialize map
+        function initMap() {
+            // Create map centered on the geofenced area (not user's current location)
+            const geofenceCenter = { lat: 22.9885, lng: 88.4530 }; // Center of the geofenced zones
+            state.map = L.map('map').setView([geofenceCenter.lat, geofenceCenter.lng], 18);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(state.map);
+            
+            // Add user marker with map-style icon
+            const userIcon = L.divIcon({
+                className: 'custom-marker',
+                html: `
+                    <div style="
+                        width: 30px; 
+                        height: 30px; 
+                        background: #3B82F6; 
+                        border: 3px solid white; 
+                        border-radius: 50% 50% 50% 0; 
+                        transform: rotate(-45deg); 
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                        position: relative;
+                    ">
+                        <div style="
+                            position: absolute;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%) rotate(45deg);
+                            width: 8px;
+                            height: 8px;
+                            background: white;
+                            border-radius: 50%;
+                        "></div>
+                    </div>
+                `,
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            });
+            
+            state.userMarker = L.marker(state.userPosition, { 
+                icon: userIcon,
+                draggable: true
+            }).addTo(state.map);
+            
+            // Add drag event listener
+            state.userMarker.on('dragend', function(e) {
+                const newPos = e.target.getLatLng();
+                state.userPosition = { lat: newPos.lat, lng: newPos.lng };
+                checkRestrictedZones(newPos.lat, newPos.lng);
+            });
+            
+            state.userMarker.bindPopup('Your position');
+            
+            // Add restricted zones
+            state.restrictedLayer = L.layerGroup().addTo(state.map);
+            
+            // Create zones as polygons
+            const redPolygon = L.polygon(redZoneCoords, {
+                color: '#EF4444',
+                fillColor: '#EF4444',
+                fillOpacity: 0.3,
+                weight: 2
+            }).addTo(state.restrictedLayer).bindPopup('Red Zone');
+            
+            const yellowPolygon = L.polygon(yellowZoneCoords, {
+                color: '#FBBF24',
+                fillColor: '#FBBF24',
+                fillOpacity: 0.3,
+                weight: 2
+            }).addTo(state.restrictedLayer).bindPopup('Yellow Zone');
+            
+            const greenPolygon = L.polygon(greenZoneCoords, {
+                color: '#10B981',
+                fillColor: '#10B981',
+                fillOpacity: 0.3,
+                weight: 2
+            }).addTo(state.restrictedLayer).bindPopup('Green Zone');
+            
+            // Add hover effects to polygons
+            [redPolygon, yellowPolygon, greenPolygon].forEach(polygon => {
+                polygon.on('mouseover', function(e) {
+                    this.setStyle({ weight: 3, fillOpacity: 0.5 });
+                });
+                
+                polygon.on('mouseout', function(e) {
+                    this.setStyle({ weight: 2, fillOpacity: 0.3 });
+                });
+            });
+            
+            // Store restricted zones for checking with priority types
+            state.restrictedZones = [
+                { coords: redZoneCoords, name: 'Red Zone', type: 'red' },
+                { coords: greenZoneCoords, name: 'Green Zone', type: 'green' },
+                { coords: yellowZoneCoords, name: 'Yellow Zone', type: 'yellow' }
+            ];
+            
+            // Add person markers layer
+            const personsLayer = L.layerGroup().addTo(state.map);
+            
+            // Add click event to map
+            state.map.on('click', handleMapClick);
+            
+            // Check initial position
+            checkRestrictedZones(state.userPosition.lat, state.userPosition.lng);
         }
 
         // Update time display
@@ -442,11 +811,14 @@
                 minute: '2-digit',
                 hour12: true 
             });
-            // Time is no longer displayed in header since header was removed
         }
 
         // Generate nearby persons data
         function generateNearbyPersons() {
+            // Clear existing person markers
+            state.personMarkers.forEach(marker => state.map.removeLayer(marker));
+            state.personMarkers = [];
+            
             const persons = [
                 { id: 1, name: 'Alex Chen', distance: 245, status: 'Safe', color: '#3F51B5' },
                 { id: 2, name: 'Maria Silva', distance: 567, status: 'Safe', color: '#E91E63' },
@@ -463,18 +835,28 @@
             })).sort((a, b) => a.distance - b.distance);
             
             state.nearbyPersons = updatedPersons;
-            updatePersonCount();
+            
+            // Add person markers to map
+            updatedPersons.forEach(person => {
+                // Generate random position near user
+                const lat = state.userPosition.lat + (Math.random() * 0.002 - 0.001);
+                const lng = state.userPosition.lng + (Math.random() * 0.002 - 0.001);
+                
+                const personIcon = L.divIcon({
+                    className: 'person-marker',
+                    html: `<div style="background-color: ${person.color}; width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${person.distance}m</div>`,
+                    iconSize: [40, 40]
+                });
+                
+                const marker = L.marker([lat, lng], { icon: personIcon })
+                    .addTo(state.map)
+                    .bindPopup(`${person.name}<br>Status: ${person.status}<br>Distance: ${person.distance}m`);
+                
+                state.personMarkers.push(marker);
+            });
+            
         }
 
-        // Update person count
-        function updatePersonCount() {
-            // Randomly change the number of persons to simulate real-time updates
-            const change = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-            state.totalPersons = Math.max(3, Math.min(12, state.totalPersons + change));
-            
-            document.getElementById('total-persons').textContent = state.totalPersons;
-            document.getElementById('person-count').textContent = state.totalPersons;
-        }
 
         // Update donut chart with proper sizing
         function updateDonutChart() {
@@ -518,8 +900,31 @@
 
         // Play beep sound
         function playBeep(frequency = 800) {
-            if (!state.audioContext) return;
+            console.log(`Playing beep with frequency: ${frequency}`);
             
+            // Ensure audio context is initialized
+            if (!state.audioContext) {
+                try {
+                    state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log('Audio context created');
+                } catch (e) {
+                    console.log('Audio not supported');
+                    return;
+                }
+            }
+            
+            // Resume audio context if suspended (required by browsers)
+            if (state.audioContext.state === 'suspended') {
+                console.log('Resuming suspended audio context');
+                state.audioContext.resume().then(() => {
+                    playBeepSound(frequency);
+                });
+            } else {
+                playBeepSound(frequency);
+            }
+        }
+
+        function playBeepSound(frequency) {
             const oscillator = state.audioContext.createOscillator();
             const gainNode = state.audioContext.createGain();
             
@@ -542,11 +947,20 @@
             state.isBeeping = true;
             document.getElementById('audio-indicator').classList.remove('hidden');
             
+            // Determine frequency based on zone type
+            let frequency = 800; // Default frequency
+            if (state.currentZone === 'red') {
+                frequency = 1000; // Higher frequency for red zone
+            } else if (state.currentZone === 'yellow') {
+                frequency = 600; // Lower frequency for yellow zone
+            }
+            
             state.beepTimer = setInterval(() => {
-                playBeep(state.isInRestrictedZone ? 1000 : 600);
+                playBeep(frequency);
             }, interval);
             
-            playBeep();
+            // Play initial beep
+            playBeep(frequency);
         }
 
         // Stop beeping
@@ -559,47 +973,93 @@
             document.getElementById('audio-indicator').classList.add('hidden');
         }
 
-        // Check restricted zones
-        function checkRestrictedZones(x, y) {
-            let inZone = false;
-            let minDistance = Infinity;
-
-            for (const zone of state.restrictedZones) {
-                if (x >= zone.x && x <= zone.x + zone.width &&
-                    y >= zone.y && y <= zone.y + zone.height) {
-                    inZone = true;
-                    break;
-                }
+        // Check if a point is inside a polygon
+        function isPointInPolygon(point, polygon) {
+            const x = point.lat, y = point.lng;
+            let inside = false;
+            
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i][0], yi = polygon[i][1];
+                const xj = polygon[j][0], yj = polygon[j][1];
                 
-                const centerX = zone.x + zone.width / 2;
-                const centerY = zone.y + zone.height / 2;
-                const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
-                minDistance = Math.min(minDistance, distance);
+                const intersect = ((yi > y) !== (yj > y)) &&
+                    (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi);
+                
+                if (intersect) inside = !inside;
+            }
+            
+            return inside;
+        }
+
+        // Check restricted zones - matches Python script logic with priority system
+        function checkRestrictedZones(lat, lng) {
+            const point = { lat, lng };
+            const matchedZones = [];
+
+            // Check all zones and collect matches (like Python script)
+            for (const zone of state.restrictedZones) {
+                if (isPointInPolygon(point, zone.coords)) {
+                    matchedZones.push(zone);
+                }
+            }
+
+            // Determine zone type based on priority: RED > GREEN > YELLOW
+            let zoneType = 'outside';
+            let zoneName = 'Outside Safe Area';
+            
+            if (matchedZones.length > 0) {
+                // Find highest priority zone (RED=3, GREEN=2, YELLOW=1)
+                const priorityOrder = { 'red': 3, 'green': 2, 'yellow': 1 };
+                const highestPriorityZone = matchedZones.reduce((highest, current) => {
+                    return priorityOrder[current.type] > priorityOrder[highest.type] ? current : highest;
+                });
+                
+                zoneType = highestPriorityZone.type;
+                zoneName = highestPriorityZone.name;
             }
 
             const wasInZone = state.isInRestrictedZone;
-            state.isInRestrictedZone = inZone;
+            const previousZone = state.currentZone;
+            state.isInRestrictedZone = matchedZones.length > 0;
+            state.currentZone = zoneType;
 
-            if (inZone) {
-                state.currentStatus = 'Restricted Zone';
-                if (!wasInZone) {
-                    startBeeping(300);
-                    state.userPoints = Math.max(0, state.userPoints - 5);
+            // Handle zone changes and beeping behavior
+            console.log(`Zone detection: ${zoneType}, wasInZone: ${wasInZone}, previousZone: ${previousZone}`);
+            
+            if (zoneType === 'red') {
+                state.currentStatus = 'Red Zone';
+                if (!wasInZone || previousZone !== 'red') {
+                    console.log('Starting RED zone beeping');
+                    startBeeping(300); // Fast beeping for red zone (300ms interval)
+                    state.userPoints = Math.max(0, state.userPoints - 12); // Deduct 12 points for red zone
+                    updateDonutChart();
+                    checkSafetyScore();
+                }
+            } else if (zoneType === 'yellow') {
+                state.currentStatus = 'Yellow Zone';
+                if (!wasInZone || previousZone !== 'yellow') {
+                    console.log('Starting YELLOW zone beeping');
+                    startBeeping(1000); // Slow beeping for yellow zone (1000ms interval)
+                    state.userPoints = Math.max(0, state.userPoints - 6); // Deduct 6 points for yellow zone
+                    updateDonutChart();
+                    checkSafetyScore();
+                }
+            } else if (zoneType === 'green') {
+                state.currentStatus = 'Green Zone';
+                if (wasInZone && (previousZone === 'red' || previousZone === 'yellow')) {
+                    stopBeeping();
+                    state.userPoints = Math.min(100, state.userPoints + 2);
                     updateDonutChart();
                 }
-            } else if (minDistance < 20) {
-                state.currentStatus = 'Near Restricted';
-                if (!state.beepTimer) {
-                    startBeeping(1000);
-                }
             } else {
-                state.currentStatus = 'Safe Zone';
-                if (wasInZone || state.beepTimer) {
-                    stopBeeping();
-                    if (wasInZone) {
-                        state.userPoints = Math.min(100, state.userPoints + 2);
-                        updateDonutChart();
-                    }
+                // Outside all zones - beep to indicate danger
+                state.currentStatus = 'Outside Safe Area';
+                if (!wasInZone || previousZone !== 'outside') {
+                    console.log('Starting OUTSIDE zone beeping');
+                    startBeeping(800); // Medium beeping for outside safe area (800ms interval)
+                    state.userPoints = Math.max(0, state.userPoints - 3); // Deduct 3 points for being outside
+                    updateDonutChart();
+                    checkSafetyScore();
                 }
             }
             
@@ -609,15 +1069,12 @@
 
         // Handle map click
         function handleMapClick(e) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = ((e.clientX - rect.left) / rect.width) * 100;
-            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            const { lat, lng } = e.latlng;
             
-            state.userPosition = { x, y };
-            document.getElementById('user-position').style.left = `${x}%`;
-            document.getElementById('user-position').style.top = `${y}%`;
+            state.userPosition = { lat, lng };
+            state.userMarker.setLatLng([lat, lng]);
             
-            checkRestrictedZones(x, y);
+            checkRestrictedZones(lat, lng);
         }
 
         // Update status indicator
@@ -625,14 +1082,22 @@
             const indicator = document.getElementById('status-indicator');
             let color, icon, text;
             
-            if (state.isInRestrictedZone) {
+            if (state.currentZone === 'red') {
                 color = '#EF4444';
                 icon = '<i class="fas fa-ban mr-1"></i>';
-                text = 'RESTRICTED ZONE';
-            } else if (state.currentStatus === 'Near Restricted') {
+                text = 'RED ZONE';
+            } else if (state.currentZone === 'yellow') {
                 color = '#F59E0B';
                 icon = '<i class="fas fa-exclamation-triangle mr-1"></i>';
-                text = 'WARNING ZONE';
+                text = 'YELLOW ZONE';
+            } else if (state.currentZone === 'green') {
+                color = '#10B981';
+                icon = '<i class="fas fa-check-circle mr-1"></i>';
+                text = 'GREEN ZONE';
+            } else if (state.currentZone === 'outside') {
+                color = '#8B5CF6';
+                icon = '<i class="fas fa-exclamation-circle mr-1"></i>';
+                text = 'OUTSIDE SAFE AREA';
             } else {
                 color = '#10B981';
                 icon = '<i class="fas fa-check-circle mr-1"></i>';
@@ -642,8 +1107,37 @@
             indicator.style.backgroundColor = color;
             indicator.innerHTML = `${icon} ${text}`;
             
-            // Update user position dot color
-            document.getElementById('user-position').style.backgroundColor = color;
+            // Update user marker color
+            const newIcon = L.divIcon({
+                className: 'custom-marker',
+                html: `
+                    <div style="
+                        width: 30px; 
+                        height: 30px; 
+                        background: ${color}; 
+                        border: 3px solid white; 
+                        border-radius: 50% 50% 50% 0; 
+                        transform: rotate(-45deg); 
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                        position: relative;
+                    ">
+                        <div style="
+                            position: absolute;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%) rotate(45deg);
+                            width: 8px;
+                            height: 8px;
+                            background: white;
+                            border-radius: 50%;
+                        "></div>
+                    </div>
+                `,
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            });
+            
+            state.userMarker.setIcon(newIcon);
         }
 
         // Start emergency hold
@@ -711,6 +1205,926 @@
             }
         }
 
+        // Enable audio function
+        function enableAudio() {
+            if (!state.audioContext) {
+                try {
+                    state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log('Audio enabled');
+                } catch (e) {
+                    console.log('Audio not supported');
+                }
+            }
+        }
+
+        // Test beep function
+        function testBeep() {
+            console.log('Testing beep...');
+            playBeep(800);
+        }
+
+        // Test yellow zone beeping
+        function testYellowBeeping() {
+            console.log('Testing yellow zone beeping...');
+            state.currentZone = 'yellow';
+            startBeeping(1000);
+        }
+
+        // Test safety score system
+        function testSafetyScore() {
+            console.log('Testing safety score system...');
+            // Simulate entering red zone multiple times to trigger warnings
+            state.userPoints = 25; // Set to 25 to trigger fine warning
+            updateDonutChart();
+            checkSafetyScore();
+        }
+        
+        function testBaseCampMode() {
+            console.log('Testing base camp mode...');
+            // Set score to 15 to trigger base camp mode
+            state.userPoints = 15;
+            updateDonutChart();
+            checkSafetyScore();
+        }
+        
+        function testRoadNetwork() {
+            console.log('Testing road network...');
+            // Show road network on current map
+            showRoadNetwork();
+            
+            // Also test pathfinding
+            const startNode = findNearestNode(state.userPosition.lat, state.userPosition.lng);
+            const endNode = findNearestNode(state.baseCampCoords.lat, state.baseCampCoords.lng);
+            
+            if (startNode && endNode) {
+                const path = dijkstra(roadNetwork, startNode.id, endNode.id);
+                console.log('Shortest path found:', path.map(n => n.name));
+                
+                // Draw test route
+                if (path.length > 0) {
+                    const routeCoords = path.map(node => [node.lat, node.lng]);
+                    const testRoute = L.polyline(routeCoords, {
+                        color: '#EF4444',
+                        weight: 3,
+                        opacity: 0.8,
+                        dashArray: '5, 5'
+                    }).addTo(state.map);
+                    testRoute.bindPopup('Test Route - Shortest Path');
+                }
+            }
+        }
+        
+        function testLocation() {
+            console.log('Testing location...');
+            console.log('Current user position:', state.userPosition);
+            console.log('User marker exists:', !!state.userMarker);
+            console.log('Dev mode:', state.devMode);
+            console.log('Location watch ID:', state.locationWatchId);
+            
+            // Force get current location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        console.log('Manual location test successful:', position.coords.latitude, position.coords.longitude);
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // Update position
+                        state.userPosition = { lat, lng };
+                        
+                        // Update marker
+                        if (state.userMarker) {
+                            state.userMarker.setLatLng([lat, lng]);
+                        } else {
+                            console.log('Creating marker for test...');
+                            const userIcon = L.divIcon({
+                                className: 'custom-marker',
+                                html: '<div style="background-color: #3B82F6; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transform: rotate(-45deg);"></div>',
+                                iconSize: [20, 20],
+                                iconAnchor: [10, 20]
+                            });
+                            
+                            state.userMarker = L.marker([lat, lng], { 
+                                icon: userIcon,
+                                draggable: true
+                            }).addTo(state.map);
+                            
+                            state.userMarker.on('dragend', function(e) {
+                                const newPos = e.target.getLatLng();
+                                state.userPosition = { lat: newPos.lat, lng: newPos.lng };
+                                checkRestrictedZones(newPos.lat, newPos.lng);
+                            });
+                        }
+                        
+                        // Center map
+                        state.map.setView([lat, lng], 18);
+                        checkRestrictedZones(lat, lng);
+                    },
+                    function(error) {
+                        console.error('Manual location test failed:', error);
+                    }
+                );
+            }
+        }
+
+        // Check safety score and apply penalties
+        function checkSafetyScore() {
+            if (state.userPoints <= 33 && state.userPoints > 20) {
+                // Show fine warning
+                showFineWarning();
+            } else if (state.userPoints <= 20) {
+                // Activate base camp mode
+                if (!state.baseCampMode) {
+                    activateBaseCampMode();
+                }
+                // Show basecamp return warning
+                showBasecampWarning();
+            }
+        }
+
+        // Show fine warning
+        function showFineWarning() {
+            const fineModal = document.createElement('div');
+            fineModal.id = 'fine-modal';
+            fineModal.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: white; padding: 2rem; border-radius: 1rem; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+                        <div style="font-size: 3rem; color: #F59E0B; margin-bottom: 1rem;">⚠️</div>
+                        <h2 style="color: #F59E0B; margin-bottom: 1rem;">Safety Violation Fine</h2>
+                        <p style="color: #666; margin-bottom: 1.5rem;">Your safety score has dropped below 33 points. A fine of ₹500 has been imposed for not following safety guidelines.</p>
+                        <p style="color: #999; font-size: 0.9rem; margin-bottom: 1.5rem;">Current Score: ${state.userPoints}/100</p>
+                        <button onclick="closeFineModal()" style="background: #F59E0B; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold;">
+                            Acknowledge Fine
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(fineModal);
+        }
+
+        // Show basecamp return warning
+        function showBasecampWarning() {
+            const basecampModal = document.createElement('div');
+            basecampModal.id = 'basecamp-modal';
+            basecampModal.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: linear-gradient(135deg, #EF4444, #DC2626); padding: 2rem; border-radius: 1rem; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); color: white;">
+                        <div style="font-size: 4rem; margin-bottom: 1rem;">🚨</div>
+                        <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">CRITICAL SAFETY ALERT</h2>
+                        <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">Your safety score has dropped to ${state.userPoints} points. You must return to basecamp immediately!</p>
+                        <p style="margin-bottom: 1.5rem; font-size: 0.9rem; opacity: 0.9;">This is a mandatory safety requirement. Please proceed to the nearest basecamp location.</p>
+                        <button onclick="closeBasecampModal()" style="background: white; color: #EF4444; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold; font-size: 1rem;">
+                            I Understand - Returning to Basecamp
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(basecampModal);
+        }
+
+        // Close fine modal
+        function closeFineModal() {
+            const modal = document.getElementById('fine-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // Close basecamp modal
+        function closeBasecampModal() {
+            const modal = document.getElementById('basecamp-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        // Activate base camp mode
+        function activateBaseCampMode() {
+            state.baseCampMode = true;
+            
+            // Add base camp mode class to body
+            document.body.classList.add('base-camp-mode');
+            
+            // Hide UI elements but keep map container
+            const elementsToHide = [
+                'status-indicator', 'info-panel', 'stats-row',
+                'safety-score-section', 'emergency-section', 'notification-section',
+                'dev-mode-toggle', 'test-beep-btn', 'test-yellow-btn', 'test-score-btn', 'test-basecamp-btn'
+            ];
+            
+            elementsToHide.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.style.display = 'none';
+                }
+            });
+            
+            // Add base camp warning to map container
+            const mapContainer = document.getElementById('map-container');
+            const warning = document.createElement('div');
+            warning.className = 'base-camp-warning';
+            warning.innerHTML = '⚠️ CRITICAL: Return to Base Camp Immediately! ⚠️';
+            mapContainer.appendChild(warning);
+            
+            // Add base camp info to map container
+            const info = document.createElement('div');
+            info.className = 'base-camp-info';
+            info.innerHTML = 'Follow the blue path to reach base camp safely';
+            mapContainer.appendChild(info);
+            
+            // Add base camp controls
+            const controls = document.createElement('div');
+            controls.className = 'base-camp-controls';
+            controls.innerHTML = `
+                <button onclick="toggleDevModeInBaseCamp()">${state.devMode ? 'Live Location' : 'Dev Mode'}</button>
+                <button onclick="locateUserInBaseCamp()">Locate Me</button>
+            `;
+            mapContainer.appendChild(controls);
+            
+            // Add base camp marker and route to existing map
+            addBaseCampToMap();
+            
+            // Show road network for better navigation
+            showRoadNetwork();
+            
+            // Start base camp location tracking
+            startBaseCampLocationTracking();
+        }
+        
+        // Add base camp elements to existing map
+        function addBaseCampToMap() {
+            // Add base camp marker
+            const baseCampIcon = L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background-color: #10B981; width: 25px; height: 25px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">🏕️</div>',
+                iconSize: [25, 25],
+                iconAnchor: [12, 12]
+            });
+            
+            state.baseCampMarker = L.marker([state.baseCampCoords.lat, state.baseCampCoords.lng], { icon: baseCampIcon }).addTo(state.map);
+            state.baseCampMarker.bindPopup('Base Camp - Safe Zone');
+            
+            // Center map on user and base camp
+            const centerLat = (state.userPosition.lat + state.baseCampCoords.lat) / 2;
+            const centerLng = (state.userPosition.lng + state.baseCampCoords.lng) / 2;
+            state.map.setView([centerLat, centerLng], 16);
+            
+            // Draw route
+            drawRouteToBaseCamp();
+        }
+        
+        // Road network graph for pathfinding
+        const roadNetwork = {
+            nodes: [
+                // Main road intersections around the area
+                { id: 'A', lat: 22.9885, lng: 88.4530, name: 'Main Intersection' },
+                { id: 'B', lat: 22.9890, lng: 88.4525, name: 'North Junction' },
+                { id: 'C', lat: 22.9880, lng: 88.4535, name: 'South Junction' },
+                { id: 'D', lat: 22.9895, lng: 88.4520, name: 'Northeast Point' },
+                { id: 'E', lat: 22.9875, lng: 88.4540, name: 'Southeast Point' },
+                { id: 'F', lat: 22.9900, lng: 88.4515, name: 'Base Camp Junction' },
+                { id: 'G', lat: 22.9905, lng: 88.4510, name: 'Base Camp Access' },
+                { id: 'H', lat: 22.9870, lng: 88.4545, name: 'South Access' },
+                { id: 'I', lat: 22.9888, lng: 88.4528, name: 'Central Point' },
+                { id: 'J', lat: 22.9892, lng: 88.4522, name: 'North Central' }
+            ],
+            edges: [
+                // Road connections with distances
+                { from: 'A', to: 'B', distance: 0.0008 },
+                { from: 'A', to: 'C', distance: 0.0007 },
+                { from: 'A', to: 'I', distance: 0.0003 },
+                { from: 'B', to: 'D', distance: 0.0006 },
+                { from: 'B', to: 'J', distance: 0.0004 },
+                { from: 'C', to: 'E', distance: 0.0006 },
+                { from: 'C', to: 'H', distance: 0.0007 },
+                { from: 'D', to: 'F', distance: 0.0008 },
+                { from: 'E', to: 'H', distance: 0.0005 },
+                { from: 'F', to: 'G', distance: 0.0005 },
+                { from: 'I', to: 'J', distance: 0.0004 },
+                { from: 'J', to: 'F', distance: 0.0009 },
+                { from: 'A', to: 'J', distance: 0.0005 },
+                { from: 'I', to: 'B', distance: 0.0004 },
+                { from: 'I', to: 'C', distance: 0.0003 }
+            ]
+        };
+
+        // Dijkstra's algorithm implementation
+        function dijkstra(graph, startId, endId) {
+            const distances = {};
+            const previous = {};
+            const unvisited = new Set();
+            
+            // Initialize distances
+            graph.nodes.forEach(node => {
+                distances[node.id] = node.id === startId ? 0 : Infinity;
+                previous[node.id] = null;
+                unvisited.add(node.id);
+            });
+            
+            while (unvisited.size > 0) {
+                // Find node with minimum distance
+                let current = null;
+                let minDistance = Infinity;
+                for (const nodeId of unvisited) {
+                    if (distances[nodeId] < minDistance) {
+                        minDistance = distances[nodeId];
+                        current = nodeId;
+                    }
+                }
+                
+                if (current === null || current === endId) break;
+                unvisited.delete(current);
+                
+                // Check all neighbors
+                const neighbors = graph.edges.filter(edge => edge.from === current || edge.to === current);
+                for (const edge of neighbors) {
+                    const neighbor = edge.from === current ? edge.to : edge.from;
+                    if (!unvisited.has(neighbor)) continue;
+                    
+                    const alt = distances[current] + edge.distance;
+                    if (alt < distances[neighbor]) {
+                        distances[neighbor] = alt;
+                        previous[neighbor] = current;
+                    }
+                }
+            }
+            
+            // Reconstruct path
+            const path = [];
+            let current = endId;
+            while (current !== null) {
+                const node = graph.nodes.find(n => n.id === current);
+                path.unshift(node);
+                current = previous[current];
+            }
+            
+            return path;
+        }
+
+        // Find nearest road node to a given coordinate
+        function findNearestNode(lat, lng) {
+            let nearest = null;
+            let minDistance = Infinity;
+            
+            roadNetwork.nodes.forEach(node => {
+                const distance = calculateDistance(lat, lng, node.lat, node.lng);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearest = node;
+                }
+            });
+            
+            return nearest;
+        }
+
+        // Draw route to base camp using Dijkstra's algorithm
+        function drawRouteToBaseCamp() {
+            // Find nearest nodes to start and end points
+            const startNode = findNearestNode(state.userPosition.lat, state.userPosition.lng);
+            const endNode = findNearestNode(state.baseCampCoords.lat, state.baseCampCoords.lng);
+            
+            if (!startNode || !endNode) {
+                console.error('Could not find nearest road nodes');
+                return;
+            }
+            
+            // Find shortest path using Dijkstra's algorithm
+            const path = dijkstra(roadNetwork, startNode.id, endNode.id);
+            
+            if (path.length === 0) {
+                console.error('No path found to base camp');
+                return;
+            }
+            
+            // Remove existing route
+            if (state.routePolyline) {
+                state.map.removeLayer(state.routePolyline);
+            }
+            
+            // Create route coordinates
+            const routeCoords = path.map(node => [node.lat, node.lng]);
+            
+            // Add start and end points to route
+            routeCoords.unshift([state.userPosition.lat, state.userPosition.lng]);
+            routeCoords.push([state.baseCampCoords.lat, state.baseCampCoords.lng]);
+            
+            // Create new route polyline
+            state.routePolyline = L.polyline(routeCoords, {
+                color: '#3B82F6',
+                weight: 4,
+                opacity: 0.8,
+                dashArray: '10, 10'
+            }).addTo(state.map);
+            
+            // Add waypoint markers
+            path.forEach((node, index) => {
+                if (index > 0 && index < path.length - 1) { // Skip start and end
+                    const waypointMarker = L.circleMarker([node.lat, node.lng], {
+                        color: '#6B7280',
+                        fillColor: '#6B7280',
+                        fillOpacity: 0.6,
+                        radius: 4
+                    }).addTo(state.map);
+                    waypointMarker.bindPopup(`Waypoint ${index}: ${node.name}`);
+                }
+            });
+            
+            // Add start and end markers
+            const startMarker = L.circleMarker([state.userPosition.lat, state.userPosition.lng], {
+                color: '#3B82F6',
+                fillColor: '#3B82F6',
+                fillOpacity: 0.8,
+                radius: 6
+            }).addTo(state.map);
+            startMarker.bindPopup('Your Location');
+            
+            const endMarker = L.circleMarker([state.baseCampCoords.lat, state.baseCampCoords.lng], {
+                color: '#10B981',
+                fillColor: '#10B981',
+                fillOpacity: 0.8,
+                radius: 8
+            }).addTo(state.map);
+            endMarker.bindPopup('Base Camp');
+            
+            console.log(`Route found with ${path.length} waypoints:`, path.map(n => n.name));
+        }
+
+        // Show road network on map
+        function showRoadNetwork() {
+            // Add road nodes as markers
+            roadNetwork.nodes.forEach(node => {
+                const nodeMarker = L.circleMarker([node.lat, node.lng], {
+                    color: '#9CA3AF',
+                    fillColor: '#9CA3AF',
+                    fillOpacity: 0.3,
+                    radius: 3
+                }).addTo(state.map);
+                nodeMarker.bindPopup(`Road Node: ${node.name}`);
+            });
+            
+            // Add road edges as lines
+            roadNetwork.edges.forEach(edge => {
+                const fromNode = roadNetwork.nodes.find(n => n.id === edge.from);
+                const toNode = roadNetwork.nodes.find(n => n.id === edge.to);
+                
+                if (fromNode && toNode) {
+                    L.polyline([[fromNode.lat, fromNode.lng], [toNode.lat, toNode.lng]], {
+                        color: '#D1D5DB',
+                        weight: 1,
+                        opacity: 0.4,
+                        dashArray: '2, 2'
+                    }).addTo(state.map);
+                }
+            });
+        }
+
+        // Hide road network
+        function hideRoadNetwork() {
+            // Remove all road network markers and lines
+            state.map.eachLayer(layer => {
+                if (layer instanceof L.CircleMarker && layer.options.color === '#9CA3AF') {
+                    state.map.removeLayer(layer);
+                }
+                if (layer instanceof L.Polyline && layer.options.color === '#D1D5DB') {
+                    state.map.removeLayer(layer);
+                }
+            });
+        }
+        
+        // Start location tracking for base camp mode
+        function startBaseCampLocationTracking() {
+            // Use existing location tracking if not in dev mode
+            if (!state.devMode && navigator.geolocation) {
+                state.locationWatchId = navigator.geolocation.watchPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // Update user position
+                        state.userPosition = { lat, lng };
+                        state.userMarker.setLatLng([lat, lng]);
+                        
+                        // Update route
+                        drawRouteToBaseCamp();
+                        
+                        // Check if reached base camp
+                        const distance = calculateDistance(lat, lng, state.baseCampCoords.lat, state.baseCampCoords.lng);
+                        if (distance < 50) { // Within 50 meters
+                            deactivateBaseCampMode();
+                        }
+                    },
+                    function(error) {
+                        console.error('Location error:', error);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
+                );
+            } else if (state.devMode) {
+                // In dev mode, update route when dev pin moves
+                if (state.devPin) {
+                    state.devPin.off('dragend'); // Remove existing listener
+                    state.devPin.on('dragend', function(e) {
+                        const newPos = e.target.getLatLng();
+                        state.userPosition = { lat: newPos.lat, lng: newPos.lng };
+                        state.userMarker.setLatLng([newPos.lat, newPos.lng]);
+                        
+                        // Update route
+                        drawRouteToBaseCamp();
+                        
+                        // Check if reached base camp
+                        const distance = calculateDistance(newPos.lat, newPos.lng, state.baseCampCoords.lat, state.baseCampCoords.lng);
+                        if (distance < 50) { // Within 50 meters
+                            deactivateBaseCampMode();
+                        }
+                    });
+                }
+            }
+        }
+        
+        // Calculate distance between two points
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371e3; // Earth's radius in meters
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lng2-lng1) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
+        }
+        
+        // Deactivate base camp mode
+        function deactivateBaseCampMode() {
+            state.baseCampMode = false;
+            
+            // Remove base camp mode class
+            document.body.classList.remove('base-camp-mode');
+            
+            // Remove base camp elements from map container
+            const warning = document.querySelector('.base-camp-warning');
+            if (warning) warning.remove();
+            
+            const info = document.querySelector('.base-camp-info');
+            if (info) info.remove();
+            
+            const controls = document.querySelector('.base-camp-controls');
+            if (controls) controls.remove();
+            
+            // Remove base camp marker and route
+            if (state.baseCampMarker) {
+                state.map.removeLayer(state.baseCampMarker);
+                state.baseCampMarker = null;
+            }
+            
+            if (state.routePolyline) {
+                state.map.removeLayer(state.routePolyline);
+                state.routePolyline = null;
+            }
+            
+            // Hide road network
+            hideRoadNetwork();
+            
+            // Show all UI elements again
+            const elementsToShow = [
+                'status-indicator', 'info-panel', 'stats-row',
+                'safety-score-section', 'emergency-section', 'notification-section',
+                'dev-mode-toggle', 'test-beep-btn', 'test-yellow-btn', 'test-score-btn', 'test-basecamp-btn'
+            ];
+            
+            elementsToShow.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.style.display = '';
+                }
+            });
+            
+            // Stop base camp location tracking
+            if (state.locationWatchId) {
+                navigator.geolocation.clearWatch(state.locationWatchId);
+                state.locationWatchId = null;
+            }
+            
+            // Restore normal location tracking if not in dev mode
+            if (!state.devMode) {
+                startLocationTracking();
+            }
+        }
+
+        // Toggle dev mode in base camp mode
+        function toggleDevModeInBaseCamp() {
+            if (state.devMode) {
+                // Switch to live location
+                state.devMode = false;
+                if (state.devPin) {
+                    state.map.removeLayer(state.devPin);
+                    state.devPin = null;
+                }
+                startLocationTracking();
+            } else {
+                // Switch to dev mode
+                state.devMode = true;
+                if (state.locationWatchId) {
+                    navigator.geolocation.clearWatch(state.locationWatchId);
+                    state.locationWatchId = null;
+                }
+                createDraggablePin();
+            }
+            
+            // Update button text
+            const controls = document.querySelector('.base-camp-controls');
+            if (controls) {
+                controls.innerHTML = `
+                    <button onclick="toggleDevModeInBaseCamp()">${state.devMode ? 'Live Location' : 'Dev Mode'}</button>
+                    <button onclick="locateUserInBaseCamp()">Locate Me</button>
+                `;
+            }
+        }
+        
+        // Locate user in base camp mode
+        function locateUserInBaseCamp() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // Update user position
+                        state.userPosition = { lat, lng };
+                        state.userMarker.setLatLng([lat, lng]);
+                        
+                        // Update route
+                        drawRouteToBaseCamp();
+                        
+                        // Center map on user
+                        state.map.setView([lat, lng], 16);
+                    },
+                    function(error) {
+                        console.error('Location error:', error);
+                    }
+                );
+            }
+        }
+
+        // Update coordinates display
+        function updateCoordinates(lat, lng) {
+            const coordsDisplay = document.getElementById('coordinates-display');
+            const latElement = document.getElementById('current-lat');
+            const lngElement = document.getElementById('current-lng');
+            
+            // Add updating animation
+            coordsDisplay.classList.add('updating');
+            
+            // Update coordinates
+            latElement.textContent = lat.toFixed(6);
+            lngElement.textContent = lng.toFixed(6);
+            
+            // Remove updating animation after a short delay
+            setTimeout(() => {
+                coordsDisplay.classList.remove('updating');
+            }, 200);
+        }
+
+        // Start real-time coordinate updates
+        function startCoordinateUpdates() {
+            // Update coordinates every 100ms for smooth real-time updates
+            setInterval(() => {
+                updateCoordinates(state.userPosition.lat, state.userPosition.lng);
+            }, 100);
+        }
+
+        // Locate user function
+        function locateUser() {
+            const locateBtn = document.getElementById('locate-me-btn');
+            
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser");
+                return;
+            }
+            
+            // Show loading state
+            locateBtn.classList.add('locating');
+            locateBtn.innerHTML = '<div class="location-loading"></div>';
+            
+            // Get current position
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    // Success callback
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    // Update user position
+                    state.userPosition = { lat, lng };
+                    console.log('Updating marker to:', lat, lng);
+                    
+                    // Remove existing marker if it exists
+                    if (state.userMarker) {
+                        state.map.removeLayer(state.userMarker);
+                    }
+                    
+                    // Create new marker with map-style icon
+                    const userIcon = L.divIcon({
+                        className: 'custom-marker',
+                        html: '<div style="background-color: #3B82F6; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transform: rotate(-45deg);"></div>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 20]
+                    });
+                    
+                    // Create new draggable marker
+                    state.userMarker = L.marker([lat, lng], { 
+                        icon: userIcon,
+                        draggable: true
+                    }).addTo(state.map);
+                    
+                    // Add drag event listener
+                    state.userMarker.on('dragend', function(e) {
+                        const newPos = e.target.getLatLng();
+                        state.userPosition = { lat: newPos.lat, lng: newPos.lng };
+                        checkRestrictedZones(newPos.lat, newPos.lng);
+                    });
+                    
+                    // Center map on user location
+                    state.map.setView([lat, lng], 18);
+                    
+                    // Check if in restricted zone
+                    checkRestrictedZones(lat, lng);
+                    
+                    // Reset button state
+                    locateBtn.classList.remove('locating');
+                    locateBtn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+                    
+                    // Show success message
+                    document.getElementById('notification-text').textContent = 
+                        `Location updated! You are at ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                },
+                function(error) {
+                    // Error callback
+                    console.error("Error getting location:", error);
+                    
+                    // Reset button state
+                    locateBtn.classList.remove('locating');
+                    locateBtn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+                    
+                    // Show error message
+                    let errorMsg = "Unable to get your location";
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = "Location access denied. Please enable location permissions in your browser settings.";
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = "Location information is unavailable.";
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = "The request to get your location timed out.";
+                            break;
+                    }
+                    
+                    document.getElementById('notification-text').textContent = errorMsg;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
+                }
+            );
+        }
+
+        // Developer Mode Functions
+        function toggleDevMode() {
+            state.devMode = !state.devMode;
+            const toggle = document.getElementById('dev-mode-toggle');
+            
+            if (state.devMode) {
+                // Enable developer mode
+                toggle.style.backgroundColor = '#10B981';
+                toggle.innerHTML = '<i class="fas fa-code mr-1"></i> DEV ON';
+                
+                // Stop live location tracking
+                if (state.locationWatchId) {
+                    navigator.geolocation.clearWatch(state.locationWatchId);
+                    state.locationWatchId = null;
+                }
+                
+                // Create draggable pin
+                createDraggablePin();
+                
+                // Update notification
+                document.getElementById('notification-text').textContent = 
+                    'Developer mode enabled. Drag the red pin to test different locations.';
+            } else {
+                // Disable developer mode
+                toggle.style.backgroundColor = '#6B7280';
+                toggle.innerHTML = '<i class="fas fa-code mr-1"></i> DEV MODE';
+                
+                // Remove draggable pin
+                if (state.devPin) {
+                    state.map.removeLayer(state.devPin);
+                    state.devPin = null;
+                }
+                
+                // Location tracking is now manual only (via locate me button)
+                
+                // Update notification
+                document.getElementById('notification-text').textContent = 
+                    'Developer mode disabled. Use the locate me button to get your current location.';
+            }
+        }
+
+        function createDraggablePin() {
+            // Create a draggable marker for testing
+            const devIcon = L.divIcon({
+                className: 'dev-pin',
+                html: '<div style="background-color: #EF4444; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); cursor: move;"></div>',
+                iconSize: [20, 20]
+            });
+            
+            state.devPin = L.marker([state.userPosition.lat, state.userPosition.lng], { 
+                icon: devIcon,
+                draggable: true
+            }).addTo(state.map);
+            
+            // Add drag event listeners for real-time updates
+            state.devPin.on('drag', function(e) {
+                const newPos = e.target.getLatLng();
+                state.userPosition = { lat: newPos.lat, lng: newPos.lng };
+                state.userMarker.setLatLng([newPos.lat, newPos.lng]);
+                
+                // Update notification with coordinates during drag
+                document.getElementById('notification-text').textContent = 
+                    `Testing location: ${newPos.lat.toFixed(6)}, ${newPos.lng.toFixed(6)}`;
+            });
+            
+            state.devPin.on('dragend', function(e) {
+                const newPos = e.target.getLatLng();
+                state.userPosition = { lat: newPos.lat, lng: newPos.lng };
+                state.userMarker.setLatLng([newPos.lat, newPos.lng]);
+                
+                checkRestrictedZones(newPos.lat, newPos.lng);
+                
+                // Update notification with coordinates
+                document.getElementById('notification-text').textContent = 
+                    `Testing location: ${newPos.lat.toFixed(6)}, ${newPos.lng.toFixed(6)}`;
+            });
+        }
+
+        function startLocationTracking() {
+            console.log('Starting location tracking...');
+            if (navigator.geolocation) {
+                state.locationWatchId = navigator.geolocation.watchPosition(
+                    function(position) {
+                        console.log('Location received:', position.coords.latitude, position.coords.longitude);
+                        if (!state.devMode) {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            
+                            state.userPosition = { lat, lng };
+                            
+                            // Update or create marker
+                            if (state.userMarker) {
+                                console.log('Updating existing marker to:', lat, lng);
+                                state.userMarker.setLatLng([lat, lng]);
+                            } else {
+                                console.log('Creating new marker at:', lat, lng);
+                                // Create new marker with map-style icon
+                                const userIcon = L.divIcon({
+                                    className: 'custom-marker',
+                                    html: '<div style="background-color: #3B82F6; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transform: rotate(-45deg);"></div>',
+                                    iconSize: [20, 20],
+                                    iconAnchor: [10, 20]
+                                });
+                                
+                                state.userMarker = L.marker([lat, lng], { 
+                                    icon: userIcon,
+                                    draggable: true
+                                }).addTo(state.map);
+                                
+                                // Add drag event listener
+                                state.userMarker.on('dragend', function(e) {
+                                    const newPos = e.target.getLatLng();
+                                    state.userPosition = { lat: newPos.lat, lng: newPos.lng };
+                                    checkRestrictedZones(newPos.lat, newPos.lng);
+                                });
+                            }
+                            
+                            checkRestrictedZones(lat, lng);
+                        }
+                    },
+                    function(error) {
+                        console.log('Location tracking error:', error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 60000
+                    }
+                );
+            } else {
+                console.log('Geolocation not supported');
+            }
+        }
+
         // Initialize the app when the page loads
         window.addEventListener('DOMContentLoaded', () => {
             initApp();
@@ -721,5 +2135,5 @@
             });
         });
     </script>
-</body>
+</body> 
 </html>
